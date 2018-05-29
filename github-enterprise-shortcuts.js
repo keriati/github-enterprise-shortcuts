@@ -136,14 +136,22 @@ let getPathName = function () {
 
     function exitLineSelectMode() {
         document.removeEventListener('keydown', onLineSelectKey);
+        var lines = getCodeLines();
+
+        var selectedLineIndex = getSelectedLineIndex(lines);
+
+        deselectLineAtIndex(lines, selectedLineIndex);
     }
 
     function onLineSelectKey(event) {
         var actions = {
             j: selectNextLine,
+            J: jump10LinesForwards,
             k: selectPrevLine,
+            K: jump10LinesBackwards,
             o: commentSelectedLine,
-        };
+            g: exitLineSelectMode
+    };
 
         try {
             actions[event.key]();
@@ -154,32 +162,65 @@ let getPathName = function () {
     }
 
     function selectNextLine() {
-        console.log('select next line');
-        var lines = getCodeLines();
+        jumpForwardLines();
+    }
 
-        var selectedLineIndex = getSelectedLineIndex(lines);
-
-        deselectLineAtIndex(lines, selectedLineIndex);
-
-        if (selectedLineIndex === lines.length - 1) {
-            selectedLineIndex = -1;
-        }
-
-        selectLineAtIndex(lines, selectedLineIndex + 1);
+    function jump10LinesForwards() {
+        jumpForwardLines(10);
     }
 
     function selectPrevLine() {
+        jumpForwardLines(-1);
+    }
+
+    function jump10LinesBackwards() {
+        jumpForwardLines(-10);
+    }
+
+
+    function jumpForwardLines(linesToJump) {
+        linesToJump = linesToJump || 1;
         var lines = getCodeLines();
 
         var selectedLineIndex = getSelectedLineIndex(lines);
 
         deselectLineAtIndex(lines, selectedLineIndex);
 
-        if (selectedLineIndex < 1) {
+        if (linesToJump < 0 && selectedLineIndex < -1 * linesToJump) {
             selectedLineIndex = lines.length;
+            linesToJump = -1;
         }
 
-        selectLineAtIndex(lines, selectedLineIndex - 1);
+        if (linesToJump > 0 && selectedLineIndex  + linesToJump > lines.length - 1) {
+            selectedLineIndex = -1;
+            linesToJump = 1;
+        }
+
+        let newSelectionIndex = selectedLineIndex + linesToJump;
+
+        selectLineAtIndex(lines, newSelectionIndex);
+        scrollToElement(lines, newSelectionIndex);
+    }
+
+    function scrollToElement(lines, newSelectionIndex) {
+        var selectedLine = lines[newSelectionIndex];
+        if (!isElementInViewport(selectedLine)) {
+            selectedLine.scrollIntoView({
+                behavior: 'instant',
+                block: 'center',
+                inline: 'nearest',
+            });
+        }
+    }
+
+    function isElementInViewport(el) {
+        var rect = el.getBoundingClientRect();
+        return (
+            rect.top >= 0 &&
+            rect.left >= 0 &&
+            rect.bottom <= (window.innerHeight || document. documentElement.clientHeight) &&
+            rect.right <= (window.innerWidth || document. documentElement.clientWidth)
+        );
     }
 
     function getSelectedLineIndex(lines) {
